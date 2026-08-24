@@ -1,5 +1,50 @@
 name : Communicating with Cliq
 
+# ============================================================================
+# CliqConnector.yml — Zoho Cliq notification + AI PR review workflow
+#
+# This file is meant to be copied as-is into the consuming repository at
+# .github/workflows/CliqConnector.yml. No values need to be edited directly
+# in this file except the three AI_REVIEW_* lines noted below (optional).
+#
+# USER-CONFIGURABLE FIELDS — where each one is set:
+#
+#   A) Repo/Org Variables  (Settings -> Secrets and variables -> Actions -> Variables)
+#      OR typed directly in the yml below (see the `||` fallback on each line
+#      in the `env:` block) — pick whichever you prefer per field:
+#        - CLIQ_NOTIFICATION_MODE   optional ("user" or "bot"; defaults to "user")
+#        - CLIQ_BOT_UNIQUE_NAME     required only when CLIQ_NOTIFICATION_MODE=bot
+#        - CLIQ_PROJECT_NUMBER      REQUIRED. GitHub Project (v2) number to log PR
+#                                    threads into; e.g. the "1" in
+#                                    https://github.com/orgs/<orgname>/projects/1
+#                                    Set as a repo/org Variable (recommended for
+#                                    public/shared repos), or type the number
+#                                    directly into the yml fallback below.
+#        - CLIQ_THREAD_FIELD_ID     REQUIRED. Numeric field id or PVTF_* node id
+#                                    for the Cliq-thread field. Same either/or
+#                                    choice as CLIQ_PROJECT_NUMBER above.
+#
+#   B) Environment Secrets  (Settings -> Environments -> cliq-production -> Secrets)
+#      Required. Must live in the protected "cliq-production" environment,
+#      NOT as plain repo secrets, so only admins/approved reviewers can set them.
+#        - ENDPOINT           (Zoho Cliq incoming webhook URL)
+#        - PROJECT_TOKEN      (classic GitHub PAT with repo + project scopes)
+#        - AI_REVIEW_TOKEN    (API key for the AI provider below; required only
+#                              if AI_REVIEW_ENABLED is true)
+#
+#   C) In-file workflow inputs  (edit directly below, in the `env:` block of
+#      the `connecting_cliq` job). Plain values, not secrets:
+#        - AI_REVIEW_ENABLED   (true | false)
+#        - AI_REVIEW_SERVICE   (openai | claude | gemini)
+#        - AI_REVIEW_MODEL     (model name for the chosen service, or blank
+#                                for the provider's default)
+#
+#   D) One-time GitHub setup (no yml edits):
+#        - Run this workflow once on a real PR so the "AI Review Gate" check
+#          context is registered, then add it as a required status check in
+#          Branch Protection / Rules.
+# ============================================================================
+
 on:
   branch_protection_rule:
     #types : [created , edited , deleted]
@@ -84,28 +129,84 @@ jobs:
     # Configure this in: Settings -> Environments -> cliq-production
     environment: cliq-production
     env:
-      # Supported values: user or bot. Defaulted to bot for bot-auth posting.
+      # ---------------------------------------------------------------------
+      # (A) Repo/Org VARIABLES — optional, all have safe defaults.
+      # Set at: Settings -> Secrets and variables -> Actions -> Variables tab.
+      # ---------------------------------------------------------------------
+
+      # USER CONFIG (variable): CLIQ_NOTIFICATION_MODE
+      # Values: "user" (default here) or "bot". Use "bot" to post as a
+      # configured Cliq bot instead of the webhook's default identity.
       CLIQ_NOTIFICATION_MODE: ${{ vars.CLIQ_NOTIFICATION_MODE || 'user' }}
-      # Required when CLIQ_NOTIFICATION_MODE=bot. Configure in repo/org variable.
+
+      # USER CONFIG (variable): CLIQ_BOT_UNIQUE_NAME
+      # Required ONLY when CLIQ_NOTIFICATION_MODE=bot above. Set it to the
+      # bot's unique name so it gets appended to the endpoint as a query param.
       CLIQ_BOT_UNIQUE_NAME: ${{ vars.CLIQ_BOT_UNIQUE_NAME || '' }}
-      # Configure this once. Use the numeric field identifier from the Project field settings URL,
-      # or provide the GraphQL node id directly (PVTF_*).
+
+      # USER CONFIG (variable OR in-file): CLIQ_THREAD_FIELD_ID — REQUIRED.
+      # The GitHub Project (v2) field used to store the Cliq thread reference
+      # per PR. Use the numeric field id from the Project field settings URL,
+      # or the GraphQL node id directly (PVTF_*).
+      #
+      # Option 1 (recommended for public/shared repos): create a repo/org
+      #   Variable named CLIQ_THREAD_FIELD_ID — it takes precedence below.
+      # Option 2 (quick edit, private repos): leave the Variable unset and
+      #   replace the '' after the || with your field id directly, e.g.:
+      #   GITHUB_PROJECT_THREAD_FIELD_ID: ${{ vars.CLIQ_THREAD_FIELD_ID || 'PVTF_lADOAbC123' }}
+      # Leaving both the Variable and the fallback empty will prevent thread
+      # reuse from working correctly.
       GITHUB_PROJECT_THREAD_FIELD_ID: ${{ vars.CLIQ_THREAD_FIELD_ID || '401236993' }}
-      # Configure this once. Optional repo/org variable CLIQ_PROJECT_NUMBER can override it.
+
+      # USER CONFIG (variable OR in-file): CLIQ_PROJECT_NUMBER — REQUIRED.
+      # The GitHub Project (v2) number that PRs get logged into for thread
+      # reuse. Find it in your project's URL:
+      #   https://github.com/orgs/<orgname>/projects/1
+      #                                              ^-- this is the number
+      # (org-owned projects) or https://github.com/users/<username>/projects/1
+      # (user-owned projects).
+      #
+      # Option 1 (recommended for public/shared repos): create a repo/org
+      #   Variable named CLIQ_PROJECT_NUMBER — it takes precedence below.
+      # Option 2 (quick edit, private repos): leave the Variable unset and
+      #   replace the '' after the || with your project number directly, e.g.:
+      #   GITHUB_PROJECT_NUMBER: ${{ vars.CLIQ_PROJECT_NUMBER || '1' }}
       GITHUB_PROJECT_NUMBER: ${{ vars.CLIQ_PROJECT_NUMBER || '1' }}
-      # --- AI Review configuration ---
-      # Edit these three values directly if you need to change AI review behavior.
-      # AI_REVIEW_ENABLED : true or false - turns the AI review gate on/off.
-      # AI_REVIEW_SERVICE : openai | claude | gemini - which AI provider to use.
-      # AI_REVIEW_MODEL   : the model name for the chosen service. Leave blank to
-      #                     use the provider default (gpt-4.1-mini / claude-3-5-sonnet-latest / gemini-1.5-pro).
+
+      # ---------------------------------------------------------------------
+      # (C) In-file workflow inputs — edit these directly in this file.
+      # Plain, non-sensitive values (not secrets, not repo/org variables).
+      # ---------------------------------------------------------------------
+
+      # USER CONFIG (in-file): AI_REVIEW_ENABLED
+      # true  -> AI review gate runs on every PR (open/reopen, and sync if
+      #          ai-review-on-sync is true further below).
+      # false -> AI review step and its checks are skipped entirely.
       AI_REVIEW_ENABLED: true
-      AI_REVIEW_SERVICE: openai
-      AI_REVIEW_MODEL: gpt-4.1-mini
+
+      # USER CONFIG (in-file): AI_REVIEW_SERVICE
+      # Which AI provider to call. Supported: openai | claude | gemini.
+      # The matching API key must be stored in the AI_REVIEW_TOKEN
+      # Environment secret (see cliq-production environment secrets above).
+      AI_REVIEW_SERVICE: claude
+
+      # USER CONFIG (in-file): AI_REVIEW_MODEL
+      # Model name for the chosen AI_REVIEW_SERVICE above. Leave blank ("")
+      # to fall back to that provider's default model:
+      #   openai -> gpt-4.1-mini | claude -> claude-3-5-sonnet-latest | gemini -> gemini-1.5-pro
+      AI_REVIEW_MODEL: Opus 4.7
     steps:
+      # ---------------------------------------------------------------------
+      # (B) Environment SECRETS — required, must be set on the protected
+      # "cliq-production" Environment (Settings -> Environments -> cliq-production
+      # -> Environment secrets), not as plain repo secrets.
+      # ---------------------------------------------------------------------
       - name: Validate project token
         shell: bash
         env:
+          # USER CONFIG (environment secret): PROJECT_TOKEN
+          # Classic GitHub PAT with `repo` + `project` scopes. Used for all
+          # GitHub Projects (v2) GraphQL calls (lookup/insert PR into project).
           PROJECT_TOKEN: ${{ secrets.PROJECT_TOKEN }}
         run: |
           if [[ -z "$PROJECT_TOKEN" ]]; then
@@ -113,10 +214,28 @@ jobs:
             exit 1
           fi
 
+      - name: Validate project number and thread field id
+        shell: bash
+        run: |
+          if [[ -z "$GITHUB_PROJECT_NUMBER" ]]; then
+            echo "CLIQ_PROJECT_NUMBER is not set. Either create a repo/org Variable named"
+            echo "CLIQ_PROJECT_NUMBER, or edit CliqConnector.yml and put the project number"
+            echo "directly in the fallback: vars.CLIQ_PROJECT_NUMBER || '1'"
+            exit 1
+          fi
+          if [[ -z "$GITHUB_PROJECT_THREAD_FIELD_ID" ]]; then
+            echo "CLIQ_THREAD_FIELD_ID is not set. Either create a repo/org Variable named"
+            echo "CLIQ_THREAD_FIELD_ID, or edit CliqConnector.yml and put the field id"
+            echo "directly in the fallback: vars.CLIQ_THREAD_FIELD_ID || 'PVTF_...'"
+            exit 1
+          fi
+
       - name: Prepare Cliq endpoint
         id: prepare-cliq-endpoint
         shell: bash
         env:
+          # USER CONFIG (environment secret): ENDPOINT
+          # The Zoho Cliq incoming webhook URL that notifications are posted to.
           RAW_CLIQ_ENDPOINT: ${{ secrets.ENDPOINT }}
         run: |
           mode=$(printf '%s' "$CLIQ_NOTIFICATION_MODE" | tr '[:upper:]' '[:lower:]')
@@ -157,6 +276,7 @@ jobs:
         if: ${{ github.event_name == 'pull_request_target' }}
         shell: bash
         env:
+          # PROJECT_TOKEN: see "USER CONFIG (environment secret)" note above.
           PROJECT_TOKEN: ${{ secrets.PROJECT_TOKEN }}
           CLIQ_THREAD_STORAGE_MODE: project
           GITHUB_PROJECT_OWNER: ${{ github.repository_owner }}
@@ -199,10 +319,13 @@ jobs:
         if: ${{ github.event_name == 'pull_request_target' }}
         shell: bash
         env:
+          # PROJECT_TOKEN: see "USER CONFIG (environment secret)" note above.
           PROJECT_TOKEN: ${{ secrets.PROJECT_TOKEN }}
           GITHUB_PROJECT_OWNER: ${{ github.repository_owner }}
         run: |
           owner="$GITHUB_PROJECT_OWNER"
+          # number here comes from the GITHUB_PROJECT_NUMBER env var
+          # (USER CONFIG variable: CLIQ_PROJECT_NUMBER, defined above).
           number="$GITHUB_PROJECT_NUMBER"
 
           echo "DebugLookup: owner=$owner number=$number"
@@ -243,6 +366,7 @@ jobs:
         if: ${{ github.event_name == 'pull_request_target' }}
         shell: bash
         env:
+          # PROJECT_TOKEN: see "USER CONFIG (environment secret)" note above.
           PROJECT_TOKEN: ${{ secrets.PROJECT_TOKEN }}
           GITHUB_PROJECT_OWNER: ${{ github.repository_owner }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
@@ -313,10 +437,11 @@ jobs:
           echo "PR inserted into project table successfully."
 
       - if: ${{ github.event_name != 'pull_request' && github.event_name != 'pull_request_target' }}
-        uses: Lincy-Zoho/GitHub-Informer-New@v4.5
+        uses: Lincy-Zoho/GitHub-Informer-New@v4.6
         env:
           # Use workflow token for repo/PR APIs; use PROJECT_TOKEN only for ProjectV2 operations.
           GITHUB_TOKEN: ${{ github.token }}
+          # PROJECT_TOKEN: see "USER CONFIG (environment secret)" note above.
           PROJECT_TOKEN: ${{ secrets.PROJECT_TOKEN }}
           # Previous mode (PR marker comment storage):
           # CLIQ_THREAD_STORAGE_MODE: comment
@@ -373,6 +498,10 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
           AI_REVIEW_SERVICE: ${{ env.AI_REVIEW_SERVICE }}
           AI_REVIEW_MODEL: ${{ env.AI_REVIEW_MODEL }}
+          # USER CONFIG (environment secret): AI_REVIEW_TOKEN
+          # API key for the provider set in AI_REVIEW_SERVICE above. Required
+          # only when AI_REVIEW_ENABLED is true. Its format is validated below
+          # (sk- for OpenAI, sk-ant- for Claude, AIza for Gemini).
           AI_REVIEW_TOKEN: ${{ secrets.AI_REVIEW_TOKEN }}
         run: |
           # Posts a comment on the PR so the user is notified directly where
@@ -457,10 +586,11 @@ jobs:
           echo "model=$model" >> "$GITHUB_OUTPUT"
 
       - if: ${{ github.event_name == 'pull_request_target' }}
-        uses: Lincy-Zoho/GitHub-Informer-New@v4.5
+        uses: Lincy-Zoho/GitHub-Informer-New@v4.6
         env:
           # Use workflow token for repo/PR APIs; use PROJECT_TOKEN only for ProjectV2 operations.
           GITHUB_TOKEN: ${{ github.token }}
+          # PROJECT_TOKEN: see "USER CONFIG (environment secret)" note above.
           PROJECT_TOKEN: ${{ secrets.PROJECT_TOKEN }}
           # Previous mode (PR marker comment storage):
           # CLIQ_THREAD_STORAGE_MODE: comment
@@ -473,12 +603,15 @@ jobs:
           PULL_REQUEST_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         with:
           channel-endpoint: ${{ steps.prepare-cliq-endpoint.outputs.resolved-endpoint }}
+          # AI_REVIEW_ENABLED: see "USER CONFIG (in-file)" note above (env block).
           ai-review-enabled: ${{ env.AI_REVIEW_ENABLED }}
           ai-review-trigger: auto
           ai-review-on-sync: true
           ai-review-check-name: AI Review Gate
+          # ai-review-token: see "USER CONFIG (environment secret): AI_REVIEW_TOKEN" note above.
           ai-review-token: ${{ secrets.AI_REVIEW_TOKEN }}
-          # Resolved above from AI_REVIEW_SERVICE (openai | claude | gemini).
+          # Resolved above from AI_REVIEW_SERVICE (openai | claude | gemini) —
+          # see "USER CONFIG (in-file): AI_REVIEW_SERVICE" note above.
           ai-review-api-url: ${{ steps.resolve-ai-review-provider.outputs.api-url }}
           ai-review-model: ${{ steps.resolve-ai-review-provider.outputs.model }}
           # Diff URL from the PR event, used to fetch the latest patch reliably.
