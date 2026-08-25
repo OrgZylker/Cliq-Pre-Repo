@@ -610,6 +610,10 @@ jobs:
           ai-review-check-name: AI Review Gate
           # ai-review-token: see "USER CONFIG (environment secret): AI_REVIEW_TOKEN" note above.
           ai-review-token: ${{ secrets.AI_REVIEW_TOKEN }}
+          # USER CONFIG (in-file): AI_REVIEW_SERVICE — declared service, passed through
+          # as-is so the action's MODEL validation stays tied to what you configured
+          # above, even if ai-review-token's format later overrides ROUTING below.
+          ai-review-service: ${{ env.AI_REVIEW_SERVICE }}
           # Resolved above from AI_REVIEW_SERVICE (openai | claude | gemini) —
           # see "USER CONFIG (in-file): AI_REVIEW_SERVICE" note above.
           ai-review-api-url: ${{ steps.resolve-ai-review-provider.outputs.api-url }}
