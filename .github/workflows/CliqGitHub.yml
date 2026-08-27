@@ -552,8 +552,8 @@ jobs:
               default_model="claude-3-5-sonnet-latest"
               ;;
             gemini)
-              api_url="https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent"
-              default_model="gemini-1.5-pro"
+              api_url="https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent"
+              default_model="gemini-2.5-flash"
               ;;
             *)
               # 2. Invalid/unsupported AI_REVIEW_SERVICE -> comment on PR and fail.
