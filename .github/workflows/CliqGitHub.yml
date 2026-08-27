@@ -137,12 +137,12 @@ jobs:
       # USER CONFIG (variable): CLIQ_NOTIFICATION_MODE
       # Values: "user" (default here) or "bot". Use "bot" to post as a
       # configured Cliq bot instead of the webhook's default identity.
-      CLIQ_NOTIFICATION_MODE: ${{ vars.CLIQ_NOTIFICATION_MODE || 'user' }}
+      CLIQ_NOTIFICATION_MODE: ${{ vars.CLIQ_NOTIFICATION_MODE || 'bot' }}
 
       # USER CONFIG (variable): CLIQ_BOT_UNIQUE_NAME
       # Required ONLY when CLIQ_NOTIFICATION_MODE=bot above. Set it to the
       # bot's unique name so it gets appended to the endpoint as a query param.
-      CLIQ_BOT_UNIQUE_NAME: ${{ vars.CLIQ_BOT_UNIQUE_NAME || '' }}
+      CLIQ_BOT_UNIQUE_NAME: ${{ vars.CLIQ_BOT_UNIQUE_NAME || 'aiservicebot' }}
 
       # USER CONFIG (variable OR in-file): CLIQ_THREAD_FIELD_ID — REQUIRED.
       # The GitHub Project (v2) field used to store the Cliq thread reference
@@ -188,14 +188,13 @@ jobs:
       # Which AI provider to call. Supported: openai | claude | gemini.
       # The matching API key must be stored in the AI_REVIEW_TOKEN
       # Environment secret (see cliq-production environment secrets above).
-      AI_REVIEW_SERVICE: openai
+      AI_REVIEW_SERVICE: claude
 
       # USER CONFIG (in-file): AI_REVIEW_MODEL
       # Model name for the chosen AI_REVIEW_SERVICE above. Leave blank ("")
       # to fall back to that provider's default model:
       #   openai -> gpt-4.1-mini | claude -> claude-3-5-sonnet-latest | gemini -> gemini-1.5-pro
-      # claude-opus-4-1-20250805
-      AI_REVIEW_MODEL: gpt-4.1-mini
+      AI_REVIEW_MODEL: claude-opus-4-1-20250805
     steps:
       # ---------------------------------------------------------------------
       # (B) Environment SECRETS — required, must be set on the protected
@@ -438,7 +437,7 @@ jobs:
           echo "PR inserted into project table successfully."
 
       - if: ${{ github.event_name != 'pull_request' && github.event_name != 'pull_request_target' }}
-        uses: Lincy-Zoho/GitHub-Informer-New@v4.9
+        uses: Lincy-Zoho/GitHub-Informer-New@v5
         env:
           # Use workflow token for repo/PR APIs; use PROJECT_TOKEN only for ProjectV2 operations.
           GITHUB_TOKEN: ${{ github.token }}
@@ -587,7 +586,7 @@ jobs:
           echo "model=$model" >> "$GITHUB_OUTPUT"
 
       - if: ${{ github.event_name == 'pull_request_target' }}
-        uses: Lincy-Zoho/GitHub-Informer-New@v4.9
+        uses: Lincy-Zoho/GitHub-Informer-New@v5
         env:
           # Use workflow token for repo/PR APIs; use PROJECT_TOKEN only for ProjectV2 operations.
           GITHUB_TOKEN: ${{ github.token }}
