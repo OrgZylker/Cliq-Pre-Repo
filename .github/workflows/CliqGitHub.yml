@@ -193,8 +193,8 @@ jobs:
       # USER CONFIG (in-file): AI_REVIEW_MODEL
       # Model name for the chosen AI_REVIEW_SERVICE above. Leave blank ("")
       # to fall back to that provider's default model:
-      #   openai -> gpt-4.1-mini | claude -> claude-3-5-sonnet-latest | gemini -> gemini-2.5-flash  
-      AI_REVIEW_MODEL: claude-3-5-sonnet-latest
+      #   openai -> gpt-4.1-mini | claude -> claude-sonnet-5 | gemini -> gemini-2.5-flash  
+      AI_REVIEW_MODEL: claude-sonnet-5
     steps:
       # ---------------------------------------------------------------------
       # (B) Environment SECRETS — required, must be set on the protected
