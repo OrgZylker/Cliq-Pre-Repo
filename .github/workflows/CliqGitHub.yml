@@ -188,13 +188,13 @@ jobs:
       # Which AI provider to call. Supported: openai | claude | gemini.
       # The matching API key must be stored in the AI_REVIEW_TOKEN
       # Environment secret (see cliq-production environment secrets above).
-      AI_REVIEW_SERVICE: gemini
+      AI_REVIEW_SERVICE: claude
 
       # USER CONFIG (in-file): AI_REVIEW_MODEL
       # Model name for the chosen AI_REVIEW_SERVICE above. Leave blank ("")
       # to fall back to that provider's default model:
       #   openai -> gpt-4.1-mini | claude -> claude-3-5-sonnet-latest | gemini -> gemini-1.5-pro
-      AI_REVIEW_MODEL: gemini-2.5-flash
+      AI_REVIEW_MODEL: claude-opus-5
     steps:
       # ---------------------------------------------------------------------
       # (B) Environment SECRETS — required, must be set on the protected
@@ -437,7 +437,7 @@ jobs:
           echo "PR inserted into project table successfully."
 
       - if: ${{ github.event_name != 'pull_request' && github.event_name != 'pull_request_target' }}
-        uses: Lincy-Zoho/GitHub-Informer-New@v5.1
+        uses: Lincy-Zoho/GitHub-Informer-New@v5.2
         env:
           # Use workflow token for repo/PR APIs; use PROJECT_TOKEN only for ProjectV2 operations.
           GITHUB_TOKEN: ${{ github.token }}
@@ -500,8 +500,14 @@ jobs:
           AI_REVIEW_MODEL: ${{ env.AI_REVIEW_MODEL }}
           # USER CONFIG (environment secret): AI_REVIEW_TOKEN
           # API key for the provider set in AI_REVIEW_SERVICE above. Required
-          # only when AI_REVIEW_ENABLED is true. Its format is validated below
-          # (sk- for OpenAI, sk-ant- for Claude, AIza for Gemini).
+          # only when AI_REVIEW_ENABLED is true. NOTE: the token's format/prefix
+          # is intentionally NOT validated here anymore - Google is transitioning
+          # Gemini/AI Studio keys away from the old "AIza..." API-key format
+          # toward newer "auth key" formats, so a fixed prefix check is no
+          # longer reliable and would incorrectly reject valid keys. The
+          # service is trusted strictly from AI_REVIEW_SERVICE below; an
+          # actually-wrong/mismatched token will simply be rejected by the
+          # provider's API itself (typically 401/403).
           AI_REVIEW_TOKEN: ${{ secrets.AI_REVIEW_TOKEN }}
         run: |
           # Posts a comment on the PR so the user is notified directly where
@@ -540,20 +546,14 @@ jobs:
             openai)
               api_url="https://api.openai.com/v1/chat/completions"
               default_model="gpt-4.1-mini"
-              token_pattern='^sk-'
-              expected_hint="OpenAI keys typically start with 'sk-'."
               ;;
             claude)
               api_url="https://api.anthropic.com/v1/messages"
               default_model="claude-3-5-sonnet-latest"
-              token_pattern='^sk-ant-'
-              expected_hint="Anthropic (Claude) keys typically start with 'sk-ant-'."
               ;;
             gemini)
               api_url="https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent"
               default_model="gemini-1.5-pro"
-              token_pattern='^AIza'
-              expected_hint="Google Gemini keys typically start with 'AIza'."
               ;;
             *)
               # 2. Invalid/unsupported AI_REVIEW_SERVICE -> comment on PR and fail.
@@ -566,15 +566,14 @@ jobs:
               ;;
           esac
 
-          # 3. Token shape doesn't match the declared service -> comment on PR and fail.
-          if ! printf '%s' "$AI_REVIEW_TOKEN" | grep -qE "$token_pattern"; then
-            post_pr_comment "### :warning: AI Review Gate — Action Required
-          \`AI_REVIEW_SERVICE: $service\` is configured in \`CliqConnector.yml\`, but the \`AI_REVIEW_TOKEN\` secret does not look like a valid $service key. $expected_hint
-
-          **To fix:** update the \`AI_REVIEW_TOKEN\` secret with a valid $service API key, or change \`AI_REVIEW_SERVICE\` in \`CliqConnector.yml\` to match the provider the current token belongs to."
-            echo "::error::AI_REVIEW_TOKEN does not match the expected format for AI_REVIEW_SERVICE '$service'."
-            exit 1
-          fi
+          # NOTE: token-format validation against a fixed per-provider prefix (previously
+          # sk- / sk-ant- / AIza) has been intentionally removed. Google is transitioning
+          # Gemini/AI Studio keys away from the old "AIza..." API-key format toward newer
+          # "auth key" formats, so prefix matching is no longer a reliable, future-proof
+          # signal and would incorrectly reject valid Gemini keys going forward. The
+          # declared AI_REVIEW_SERVICE above is trusted as-is; if AI_REVIEW_TOKEN does not
+          # actually belong to that provider, the request will fail naturally at the
+          # provider's API (typically 401/403), which is surfaced later in the workflow.
 
           # Empty AI_REVIEW_MODEL -> fall back to the provider's latest default model.
           model="${AI_REVIEW_MODEL:-$default_model}"
@@ -586,7 +585,7 @@ jobs:
           echo "model=$model" >> "$GITHUB_OUTPUT"
 
       - if: ${{ github.event_name == 'pull_request_target' }}
-        uses: Lincy-Zoho/GitHub-Informer-New@v5.1
+        uses: Lincy-Zoho/GitHub-Informer-New@v5.2
         env:
           # Use workflow token for repo/PR APIs; use PROJECT_TOKEN only for ProjectV2 operations.
           GITHUB_TOKEN: ${{ github.token }}
@@ -611,8 +610,10 @@ jobs:
           # ai-review-token: see "USER CONFIG (environment secret): AI_REVIEW_TOKEN" note above.
           ai-review-token: ${{ secrets.AI_REVIEW_TOKEN }}
           # USER CONFIG (in-file): AI_REVIEW_SERVICE — declared service, passed through
-          # as-is so the action's MODEL validation stays tied to what you configured
-          # above, even if ai-review-token's format later overrides ROUTING below.
+          # as-is. This is now the SOLE source of truth for both ROUTING (endpoint/
+          # payload) and MODEL validation in the action - ai-review-token's format
+          # is never inspected to guess or override it, so keep this value matching
+          # whichever provider AI_REVIEW_TOKEN actually belongs to.
           ai-review-service: ${{ env.AI_REVIEW_SERVICE }}
           # Resolved above from AI_REVIEW_SERVICE (openai | claude | gemini) —
           # see "USER CONFIG (in-file): AI_REVIEW_SERVICE" note above.
