@@ -194,7 +194,7 @@ jobs:
       # Model name for the chosen AI_REVIEW_SERVICE above. Leave blank ("")
       # to fall back to that provider's default model:
       #   openai -> gpt-4.1-mini | claude -> claude-sonnet-5 | gemini -> gemini-2.5-flash  
-      AI_REVIEW_MODEL: gemini-2.5-flash  
+      AI_REVIEW_MODEL: gemini-2.5-flash
     steps:
       # ---------------------------------------------------------------------
       # (B) Environment SECRETS — required, must be set on the protected
@@ -437,7 +437,7 @@ jobs:
           echo "PR inserted into project table successfully."
 
       - if: ${{ github.event_name != 'pull_request' && github.event_name != 'pull_request_target' }}
-        uses: Lincy-Zoho/GitHub-Informer-New@v5.3
+        uses: Lincy-Zoho/GitHub-Informer-New@v5.4
         env:
           # Use workflow token for repo/PR APIs; use PROJECT_TOKEN only for ProjectV2 operations.
           GITHUB_TOKEN: ${{ github.token }}
@@ -596,7 +596,7 @@ jobs:
           echo "model=$model" >> "$GITHUB_OUTPUT"
 
       - if: ${{ github.event_name == 'pull_request_target' }}
-        uses: Lincy-Zoho/GitHub-Informer-New@v5.3
+        uses: Lincy-Zoho/GitHub-Informer-New@v5.4
         env:
           # Use workflow token for repo/PR APIs; use PROJECT_TOKEN only for ProjectV2 operations.
           GITHUB_TOKEN: ${{ github.token }}
