@@ -194,7 +194,7 @@ jobs:
       # Model name for the chosen AI_REVIEW_SERVICE above. Leave blank ("")
       # to fall back to that provider's default model:
       #   openai -> gpt-4.1-mini | claude -> claude-sonnet-5 | gemini -> gemini-2.5-flash  
-      AI_REVIEW_MODEL: gemini-2.5-flash
+      AI_REVIEW_MODEL: gemini-2.5-flash  
     steps:
       # ---------------------------------------------------------------------
       # (B) Environment SECRETS — required, must be set on the protected
@@ -552,7 +552,11 @@ jobs:
               default_model="claude-3-5-sonnet-latest"
               ;;
             gemini)
-              api_url="https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent"
+              # api_url is finalized after model resolution below, since Gemini's
+              # native REST endpoint embeds the model name inside the URL path
+              # itself (.../models/<model>:generateContent) rather than as a
+              # body field like OpenAI/Claude. Setting a placeholder here keeps
+              # the case/esac structure symmetric with the other providers.
               default_model="gemini-2.5-flash"
               ;;
             *)
@@ -579,6 +583,13 @@ jobs:
           model="${AI_REVIEW_MODEL:-$default_model}"
           if [[ -z "$(printf '%s' "$AI_REVIEW_MODEL" | xargs)" ]]; then
             model="$default_model"
+          fi
+
+          # Gemini's api_url must be built dynamically from the resolved model
+          # (user-supplied AI_REVIEW_MODEL if set, otherwise default_model above),
+          # since the model name is part of the URL path for this provider.
+          if [[ "$service" == "gemini" ]]; then
+            api_url="https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent"
           fi
 
           echo "api-url=$api_url" >> "$GITHUB_OUTPUT"
