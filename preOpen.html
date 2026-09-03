@@ -282,12 +282,7 @@
     <script>
         "use strict";
 
-        /*
-         * 1. Safe DOM rendering
-         *
-         * Use textContent instead of innerHTML when displaying
-         * user-controlled input.
-         */
+   
         function showMessage() {
             const userInput =
                 document.getElementById("messageInput").value;
@@ -297,24 +292,12 @@
         }
 
 
-        /*
-         * 2. API configuration
-         *
-         * No API keys or secrets are stored in client-side code.
-         * Sensitive credentials should be handled by a backend.
-         */
         function connectToService() {
             document.getElementById("apiStatus").textContent =
                 "Connection configuration is handled securely.";
         }
 
 
-        /*
-         * 3. Safe calculation
-         *
-         * Avoid eval(). Convert the input to numbers and perform
-         * the required operation explicitly.
-         */
         function calculate() {
             const first =
                 Number(document.getElementById("numberOne").value);
@@ -335,11 +318,6 @@
         }
 
 
-        /*
-         * 4. Do not store authentication tokens in browser storage.
-         *
-         * Only non-sensitive UI state is stored.
-         */
         function saveSessionState() {
             sessionStorage.setItem(
                 "sessionState",
