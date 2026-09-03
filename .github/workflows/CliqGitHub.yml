@@ -11,6 +11,7 @@ name : Communicating with Cliq
 #     Variables (Settings -> Secrets and variables -> Actions -> Variables).
 #   - No non-secret value should be hardcoded in this file.
 #   - Only the following are stored as environment secrets:
+#       - PROJECT_TOKEN
 #       - ENDPOINT
 #       - AI_REVIEW_TOKEN
 #       - GITHUB_TOKEN (provided automatically by GitHub Actions)
@@ -18,7 +19,6 @@ name : Communicating with Cliq
 # USER-CONFIGURABLE FIELDS — where each one is set:
 #
 #   A) Repo/Org Variables  (Settings -> Secrets and variables -> Actions -> Variables)
-#        - PROJECT_TOKEN             classic GitHub PAT with repo + project scopes
 #        - CLIQ_NOTIFICATION_MODE    optional ("user" or "bot")
 #        - CLIQ_BOT_UNIQUE_NAME      required only when CLIQ_NOTIFICATION_MODE=bot
 #        - CLIQ_PROJECT_NUMBER       REQUIRED. GitHub Project (v2) number to log PR
@@ -33,6 +33,7 @@ name : Communicating with Cliq
 #   B) Environment Secrets  (Settings -> Environments -> cliq-production -> Secrets)
 #      Required. Must live in the protected "cliq-production" environment,
 #      NOT as plain repo secrets.
+#        - PROJECT_TOKEN      (classic GitHub PAT with repo + project scopes)
 #        - ENDPOINT           (Zoho Cliq incoming webhook URL)
 #        - AI_REVIEW_TOKEN    (API key for the AI provider; required only if
 #                              AI_REVIEW_ENABLED is true)
@@ -133,10 +134,10 @@ jobs:
       # Set at: Settings -> Secrets and variables -> Actions -> Variables tab.
       # ---------------------------------------------------------------------
 
-      # USER CONFIG (repository variable): PROJECT_TOKEN
+      # USER CONFIG (environment secret): PROJECT_TOKEN
       # Classic GitHub PAT with repo + project scopes. Used for all GitHub Projects (v2)
       # GraphQL calls used to look up the project and store/update the PR thread reference.
-      PROJECT_TOKEN: ${{ vars.PROJECT_TOKEN }}
+      PROJECT_TOKEN: ${{ secrets.PROJECT_TOKEN }}
 
       # USER CONFIG (repository variable): CLIQ_NOTIFICATION_MODE
       # Values: "user" or "bot". Use "bot" to post as a configured Cliq bot
@@ -192,13 +193,13 @@ jobs:
       - name: Validate project token
         shell: bash
         env:
-          # USER CONFIG (repository variable): PROJECT_TOKEN
+          # USER CONFIG (environment secret): PROJECT_TOKEN
           # Classic GitHub PAT with `repo` + `project` scopes. Used for all
           # GitHub Projects (v2) GraphQL calls (lookup/insert PR into project).
-          PROJECT_TOKEN: ${{ vars.PROJECT_TOKEN }}
+          PROJECT_TOKEN: ${{ secrets.PROJECT_TOKEN }}
         run: |
           if [[ -z "$PROJECT_TOKEN" ]]; then
-            echo "PROJECT_TOKEN is missing. Create a repo/org Variable named PROJECT_TOKEN with a classic PAT that has repo + project scopes."
+            echo "PROJECT_TOKEN is missing. Add it as an environment secret named PROJECT_TOKEN in Settings -> Environments -> cliq-production."
             exit 1
           fi
 
