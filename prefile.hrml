@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Safe Vulnerability Test Cases</title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 900px;
+            margin: 40px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+
+        .card {
+            background: white;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+        }
+
+        .warning {
+            color: #b45309;
+            font-weight: bold;
+        }
+
+        input, button {
+            padding: 8px;
+            margin-top: 8px;
+        }
+
+        #output {
+            margin-top: 10px;
+            padding: 10px;
+            border: 1px solid #ddd;
+        }
+    </style>
+</head>
+
+<body>
+
+    <h1>Safe Vulnerability Test Cases</h1>
+
+    <p class="warning">
+        This file intentionally contains insecure coding patterns for static-analysis testing.
+    </p>
+
+
+    <!-- =========================================================
+         TEST CASE 1: DOM XSS
+         Expected finding:
+         User-controlled URL hash flows into innerHTML.
+         ========================================================= -->
+
+    <div class="card">
+        <h2>1. DOM XSS Pattern</h2>
+
+        <input
+            type="text"
+            id="messageInput"
+            placeholder="Enter a message"
+        >
+
+        <button onclick="showMessage()">
+            Display Message
+        </button>
+
+        <div id="output"></div>
+    </div>
+
+    <script>
+        function showMessage() {
+            const userInput = document.getElementById("messageInput").value;
+
+            // INTENTIONAL TEST VULNERABILITY:
+            // User-controlled data is assigned directly to innerHTML.
+            document.getElementById("output").innerHTML = userInput;
+        }
+    </script>
+
+
+    <!-- =========================================================
+         TEST CASE 2: Hardcoded Secret
+         Expected finding:
+         API credential embedded directly in client-side source.
+         ========================================================= -->
+
+    <div class="card">
+        <h2>2. Hardcoded API Key</h2>
+
+        <button onclick="connectToService()">
+            Connect
+        </button>
+
+        <p id="apiStatus"></p>
+    </div>
+
+    <script>
+        // INTENTIONAL TEST VULNERABILITY:
+        // Secret/token is hardcoded in source code.
+        const API_KEY = "TEST_SECRET_API_KEY_123456789";
+
+        function connectToService() {
+            document.getElementById("apiStatus").textContent =
+                "Using configured API key.";
+        }
+    </script>
+
+
+    <!-- =========================================================
+         TEST CASE 3: eval()
+         Expected finding:
+         Dynamic code execution using eval().
+         ========================================================= -->
+
+    <div class="card">
+        <h2>3. Unsafe eval()</h2>
+
+        <input
+            type="text"
+            id="calculation"
+            placeholder="Example: 2 + 3"
+        >
+
+        <button onclick="calculate()">
+            Calculate
+        </button>
+
+        <p id="result"></p>
+    </div>
+
+    <script>
+        function calculate() {
+            const expression =
+                document.getElementById("calculation").value;
+
+            // INTENTIONAL TEST VULNERABILITY:
+            // Dynamic input is passed to eval().
+            const result = eval(expression);
+
+            document.getElementById("result").textContent =
+                String(result);
+        }
+    </script>
+
+
+    <!-- =========================================================
+         TEST CASE 4: Sensitive Data in localStorage
+         Expected finding:
+         Authentication token stored in browser localStorage.
+         ========================================================= -->
+
+    <div class="card">
+        <h2>4. Sensitive Token Storage</h2>
+
+        <button onclick="saveToken()">
+            Save Session Token
+        </button>
+
+        <button onclick="readToken()">
+            Read Session Token
+        </button>
+
+        <p id="tokenStatus"></p>
+    </div>
+
+    <script>
+        function saveToken() {
+
+            // INTENTIONAL TEST VULNERABILITY:
+            // Authentication/session token stored in localStorage.
+            const sessionToken = "TEST_SESSION_TOKEN_123456";
+
+            localStorage.setItem(
+                "sessionToken",
+                sessionToken
+            );
+
+            document.getElementById("tokenStatus").textContent =
+                "Token stored.";
+        }
+
+        function readToken() {
+            const token =
+                localStorage.getItem("sessionToken");
+
+            document.getElementById("tokenStatus").textContent =
+                token ? "Token exists." : "No token found.";
+        }
+    </script>
+
+
+    <!-- =========================================================
+         TEST CASE 5: Open Redirect Pattern
+         Expected finding:
+         User-controlled redirect destination.
+         ========================================================= -->
+
+    <div class="card">
+        <h2>5. Open Redirect Pattern</h2>
+
+        <input
+            type="text"
+            id="redirectUrl"
+            placeholder="Enter redirect destination"
+        >
+
+        <button onclick="redirectUser()">
+            Continue
+        </button>
+    </div>
+
+    <script>
+        function redirectUser() {
+
+            const destination =
+                document.getElementById("redirectUrl").value;
+
+            // INTENTIONAL TEST VULNERABILITY:
+            // User-controlled value is used as a redirect destination.
+            window.location.href = destination;
+        }
+    </script>
+
+
+    <!-- =========================================================
+         Expected AI Review Findings
+         
+         1. DOM-based XSS
+            Source: user input
+            Sink: innerHTML
+
+         2. Hardcoded API credential
+            Secret embedded in JavaScript source.
+
+         3. Code injection
+            User-controlled input passed to eval().
+
+         4. Sensitive data exposure
+            Session token stored in localStorage.
+
+         5. Open redirect
+            User-controlled URL assigned to location.href.
+         ========================================================= -->
+
+</body>
+</html>
