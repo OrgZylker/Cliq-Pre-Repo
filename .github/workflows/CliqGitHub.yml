@@ -24,7 +24,7 @@ name : Communicating with Cliq
 #        - PROJECT_NUMBER            REQUIRED. GitHub Project (v2) number to log PR
 #                                    threads into; e.g. the "1" in
 #                                    https://github.com/orgs/<orgname>/projects/1
-#        - CLIQ_THREAD_FIELD_ID      REQUIRED. Numeric field id or PVTF_* node id
+#        - PROJECT_THREAD_FIELD_ID   REQUIRED. Numeric field id or PVTF_* node id
 #                                    for the Cliq-thread field.
 #        - AI_REVIEW_ENABLED         optional (true | false)
 #        - AI_REVIEW_SERVICE         optional when disabled; otherwise openai | claude | gemini
@@ -149,11 +149,11 @@ jobs:
       # bot's unique name so it gets appended to the endpoint as a query param.
       CLIQ_BOT_UNIQUE_NAME: ${{ vars.CLIQ_BOT_UNIQUE_NAME }}
 
-      # USER CONFIG (repository variable): CLIQ_THREAD_FIELD_ID — REQUIRED.
+      # USER CONFIG (repository variable): PROJECT_THREAD_FIELD_ID — REQUIRED.
       # The GitHub Project (v2) field used to store the Cliq thread reference
       # per PR. Use the numeric field id from the Project field settings URL,
       # or the GraphQL node id directly (PVTF_*).
-      PROJECT_THREAD_FIELD_ID: ${{ vars.CLIQ_THREAD_FIELD_ID }}
+      PROJECT_THREAD_FIELD_ID: ${{ vars.PROJECT_THREAD_FIELD_ID }}
 
       # USER CONFIG (repository variable): PROJECT_NUMBER — REQUIRED.
       # The GitHub Project (v2) number that PRs get logged into for thread
@@ -212,8 +212,8 @@ jobs:
             exit 1
           fi
           if [[ -z "$PROJECT_THREAD_FIELD_ID" ]]; then
-            echo "CLIQ_THREAD_FIELD_ID is not set. Create a repo/org Variable named"
-            echo "CLIQ_THREAD_FIELD_ID with your GitHub Project V2 field id."
+            echo "PROJECT_THREAD_FIELD_ID is not set. Create a repo/org Variable named"
+            echo "PROJECT_THREAD_FIELD_ID with your GitHub Project V2 field id."
             exit 1
           fi
 
