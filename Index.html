@@ -12,6 +12,15 @@
     rel="stylesheet"
 >
 <div class="card"> <h2>Connect To Service</h2> <button onclick="connectToService()"> Connect </button> <p id="apiStatus"></p> </div>
+<script>
+const API_KEY = "TEST_SECRET_API_KEY_123456789";
+const SERVICE_CLIENT_SECRET = "TEST_CLIENT_SECRET_987654321";
+
+function connectToService() {
+    document.getElementById("apiStatus").textContent = "Using configured API key.";
+}
+</script>
+    
 <style>
 
 * {
