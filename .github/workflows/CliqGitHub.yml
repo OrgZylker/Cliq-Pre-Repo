@@ -263,10 +263,12 @@ jobs:
         if: ${{ github.event_name == 'pull_request_target' }}
         shell: bash
         env:
-          # PROJECT_TOKEN: see "USER CONFIG (repository variable)" note above.
-          PROJECT_TOKEN: ${{ vars.PROJECT_TOKEN }}
+          # PROJECT_TOKEN is a protected environment secret, not a repo variable.
+          PROJECT_TOKEN: ${{ secrets.PROJECT_TOKEN }}
           CLIQ_THREAD_STORAGE_MODE: project
           GITHUB_PROJECT_OWNER: ${{ github.repository_owner }}
+          PROJECT_NUMBER: ${{ vars.PROJECT_NUMBER }}
+          PROJECT_THREAD_FIELD_ID: ${{ vars.PROJECT_THREAD_FIELD_ID }}
           PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
           AI_REVIEW_CHECK_NAME: AI Review Gate
@@ -306,9 +308,10 @@ jobs:
         if: ${{ github.event_name == 'pull_request_target' }}
         shell: bash
         env:
-          # PROJECT_TOKEN: see "USER CONFIG (repository variable)" note above.
-          PROJECT_TOKEN: ${{ vars.PROJECT_TOKEN }}
+          # PROJECT_TOKEN is a protected environment secret, not a repo variable.
+          PROJECT_TOKEN: ${{ secrets.PROJECT_TOKEN }}
           GITHUB_PROJECT_OWNER: ${{ github.repository_owner }}
+          PROJECT_NUMBER: ${{ vars.PROJECT_NUMBER }}
         run: |
           owner="$GITHUB_PROJECT_OWNER"
           # number here comes from the PROJECT_NUMBER env var
@@ -353,8 +356,8 @@ jobs:
         if: ${{ github.event_name == 'pull_request_target' }}
         shell: bash
         env:
-          # PROJECT_TOKEN: see "USER CONFIG (repository variable)" note above.
-          PROJECT_TOKEN: ${{ vars.PROJECT_TOKEN }}
+          # PROJECT_TOKEN is a protected environment secret, not a repo variable.
+          PROJECT_TOKEN: ${{ secrets.PROJECT_TOKEN }}
           GITHUB_PROJECT_OWNER: ${{ github.repository_owner }}
           PROJECT_NUMBER: ${{ vars.PROJECT_NUMBER }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
@@ -429,13 +432,15 @@ jobs:
         env:
           # Use workflow token for repo/PR APIs; use PROJECT_TOKEN only for ProjectV2 operations.
           GITHUB_TOKEN: ${{ github.token }}
-          # PROJECT_TOKEN: see "USER CONFIG (repository variable)" note above.
-          PROJECT_TOKEN: ${{ vars.PROJECT_TOKEN }}
+          # PROJECT_TOKEN is a protected environment secret, not a repo variable.
+          PROJECT_TOKEN: ${{ secrets.PROJECT_TOKEN }}
           # Previous mode (PR marker comment storage):
           # CLIQ_THREAD_STORAGE_MODE: comment
           CLIQ_THREAD_STORAGE_MODE: project
           # Auto mode: resolve project id by owner + number.
           GITHUB_PROJECT_OWNER: ${{ github.repository_owner }}
+          PROJECT_NUMBER: ${{ vars.PROJECT_NUMBER }}
+          PROJECT_THREAD_FIELD_ID: ${{ vars.PROJECT_THREAD_FIELD_ID }}
           # Auto mode: resolve field id by field name.
         with:
           channel-endpoint: ${{ steps.prepare-cliq-endpoint.outputs.resolved-endpoint }}
@@ -588,13 +593,15 @@ jobs:
         env:
           # Use workflow token for repo/PR APIs; use PROJECT_TOKEN only for ProjectV2 operations.
           GITHUB_TOKEN: ${{ github.token }}
-          # PROJECT_TOKEN: see "USER CONFIG (repository variable)" note above.
-          PROJECT_TOKEN: ${{ vars.PROJECT_TOKEN }}
+          # PROJECT_TOKEN is a protected environment secret, not a repo variable.
+          PROJECT_TOKEN: ${{ secrets.PROJECT_TOKEN }}
           # Previous mode (PR marker comment storage):
           # CLIQ_THREAD_STORAGE_MODE: comment
           CLIQ_THREAD_STORAGE_MODE: project
           # Auto mode: resolve project id by owner + number.
           GITHUB_PROJECT_OWNER: ${{ github.repository_owner }}
+          PROJECT_NUMBER: ${{ vars.PROJECT_NUMBER }}
+          PROJECT_THREAD_FIELD_ID: ${{ vars.PROJECT_THREAD_FIELD_ID }}
           # Auto mode: resolve field id by field name.
           PULL_REQUEST_DIFF_URL: ${{ github.event.pull_request.diff_url }}
           PULL_REQUEST_BASE_SHA: ${{ github.event.pull_request.base.sha }}
