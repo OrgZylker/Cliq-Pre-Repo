@@ -588,6 +588,22 @@ jobs:
           echo "api-url=$api_url" >> "$GITHUB_OUTPUT"
           echo "model=$model" >> "$GITHUB_OUTPUT"
 
+      - name: Debug PR metadata for AI review
+        if: ${{ github.event_name == 'pull_request_target' }}
+        shell: bash
+        run: |
+          echo "event_name=${{ github.event_name }}"
+          echo "event_action=${{ github.event.action }}"
+          echo "repository=${{ github.repository }}"
+          echo "repo_owner=${{ github.repository_owner }}"
+          echo "pr_number=${{ github.event.pull_request.number }}"
+          echo "pr_title=${{ github.event.pull_request.title }}"
+          echo "pr_url=${{ github.event.pull_request.html_url }}"
+          echo "diff_url=${{ github.event.pull_request.diff_url }}"
+          echo "base_sha=${{ github.event.pull_request.base.sha }}"
+          echo "head_sha=${{ github.event.pull_request.head.sha }}"
+          echo "token_present=${{ secrets.GITHUB_TOKEN != '' }}"
+
       - if: ${{ github.event_name == 'pull_request_target' }}
         uses: Lincy-Zoho/GitHub-Informer-New@v6.2.9
         env:
