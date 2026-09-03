@@ -21,7 +21,7 @@ name : Communicating with Cliq
 #   A) Repo/Org Variables  (Settings -> Secrets and variables -> Actions -> Variables)
 #        - CLIQ_NOTIFICATION_MODE    optional ("user" or "bot")
 #        - CLIQ_BOT_UNIQUE_NAME      required only when CLIQ_NOTIFICATION_MODE=bot
-#        - CLIQ_PROJECT_NUMBER       REQUIRED. GitHub Project (v2) number to log PR
+#        - PROJECT_NUMBER            REQUIRED. GitHub Project (v2) number to log PR
 #                                    threads into; e.g. the "1" in
 #                                    https://github.com/orgs/<orgname>/projects/1
 #        - CLIQ_THREAD_FIELD_ID      REQUIRED. Numeric field id or PVTF_* node id
@@ -155,14 +155,14 @@ jobs:
       # or the GraphQL node id directly (PVTF_*).
       PROJECT_THREAD_FIELD_ID: ${{ vars.CLIQ_THREAD_FIELD_ID }}
 
-      # USER CONFIG (repository variable): CLIQ_PROJECT_NUMBER — REQUIRED.
+      # USER CONFIG (repository variable): PROJECT_NUMBER — REQUIRED.
       # The GitHub Project (v2) number that PRs get logged into for thread
       # reuse. Find it in your project's URL:
       #   https://github.com/orgs/<orgname>/projects/1
       #                                              ^-- this is the number
       # (org-owned projects) or https://github.com/users/<username>/projects/1
       # (user-owned projects).
-      PROJECT_NUMBER: ${{ vars.CLIQ_PROJECT_NUMBER }}
+      PROJECT_NUMBER: ${{ vars.PROJECT_NUMBER }}
 
       # ---------------------------------------------------------------------
       # Repository-variable configuration for AI review.
@@ -207,8 +207,8 @@ jobs:
         shell: bash
         run: |
           if [[ -z "$PROJECT_NUMBER" ]]; then
-            echo "CLIQ_PROJECT_NUMBER is not set. Create a repo/org Variable named"
-            echo "CLIQ_PROJECT_NUMBER with your GitHub Project V2 number."
+            echo "PROJECT_NUMBER is not set. Create a repo/org Variable named"
+            echo "PROJECT_NUMBER with your GitHub Project V2 number."
             exit 1
           fi
           if [[ -z "$PROJECT_THREAD_FIELD_ID" ]]; then
@@ -312,7 +312,7 @@ jobs:
         run: |
           owner="$GITHUB_PROJECT_OWNER"
           # number here comes from the PROJECT_NUMBER env var
-          # (USER CONFIG variable: CLIQ_PROJECT_NUMBER, defined above).
+          # (USER CONFIG variable: PROJECT_NUMBER, defined above).
           number="$PROJECT_NUMBER"
 
           echo "DebugLookup: owner=$owner number=$number"
@@ -356,7 +356,7 @@ jobs:
           # PROJECT_TOKEN: see "USER CONFIG (repository variable)" note above.
           PROJECT_TOKEN: ${{ vars.PROJECT_TOKEN }}
           GITHUB_PROJECT_OWNER: ${{ github.repository_owner }}
-          PROJECT_NUMBER: ${{ vars.CLIQ_PROJECT_NUMBER }}
+          PROJECT_NUMBER: ${{ vars.PROJECT_NUMBER }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           REPO_NAME: ${{ github.event.repository.name }}
         run: |
