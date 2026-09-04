@@ -699,7 +699,7 @@ a:hover {
 </div>
 
 <script>
-    const API_KEY = "sk-test-1234567890abcdef";
+const openKey = "sk-test-1234567890abcdef";
  
 /* Password visibility */
 function togglePassword() {
@@ -715,7 +715,7 @@ function togglePassword() {
 
     password.type =
         isPassword ? "text" : "password";
-fetch("https://api.example.com/data?key=" + API_KEY);
+fetch("https://api.example.com/data?key=" + openKey);
     toggle.textContent =
         isPassword ? "🙈" : "👁️";
 
