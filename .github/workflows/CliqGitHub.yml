@@ -209,7 +209,7 @@ jobs:
           PROJECT_TOKEN: ${{ secrets.PROJECT_TOKEN }}
           CLIQ_THREAD_STORAGE_MODE: ${{ vars.CLIQ_THREAD_STORAGE_MODE }}
         run: |
-          if [[ "${CLIQ_THREAD_STORAGE_MODE:-comment}" != "project" ]]; then
+          if [[ -z "${CLIQ_THREAD_STORAGE_MODE:-}" || "${CLIQ_THREAD_STORAGE_MODE}" != "project" ]]; then
             echo "Skipping project token validation because CLIQ_THREAD_STORAGE_MODE is not set to project."
             exit 0
           fi
@@ -224,7 +224,7 @@ jobs:
         env:
           CLIQ_THREAD_STORAGE_MODE: ${{ vars.CLIQ_THREAD_STORAGE_MODE }}
         run: |
-          if [[ "${CLIQ_THREAD_STORAGE_MODE:-comment}" != "project" ]]; then
+          if [[ -z "${CLIQ_THREAD_STORAGE_MODE:-}" || "${CLIQ_THREAD_STORAGE_MODE}" != "project" ]]; then
             echo "Skipping project number and field validation because CLIQ_THREAD_STORAGE_MODE is not set to project."
             exit 0
           fi
@@ -451,7 +451,7 @@ jobs:
           echo "PR inserted into project table successfully."
 
       - if: ${{ github.event_name != 'pull_request' && github.event_name != 'pull_request_target' }}
-        uses: Lincy-Zoho/GitHub-Informer-New@v6.3.5
+        uses: Lincy-Zoho/GitHub-Informer-New@v6.3.6
         env:
           # Use workflow token for repo/PR APIs; use PROJECT_TOKEN only for ProjectV2 operations.
           GITHUB_TOKEN: ${{ github.token }}
@@ -627,7 +627,7 @@ jobs:
           echo "token_present=${{ secrets.GITHUB_TOKEN != '' }}"
 
       - if: ${{ github.event_name == 'pull_request_target' }}
-        uses: Lincy-Zoho/GitHub-Informer-New@v6.3.5
+        uses: Lincy-Zoho/GitHub-Informer-New@v6.3.6
         env:
           # Use workflow token for repo/PR APIs; use PROJECT_TOKEN only for ProjectV2 operations.
           GITHUB_TOKEN: ${{ github.token }}
