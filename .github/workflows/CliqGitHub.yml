@@ -287,7 +287,7 @@ jobs:
         env:
           # PROJECT_TOKEN is a protected environment secret, not a repo variable.
           PROJECT_TOKEN: ${{ secrets.PROJECT_TOKEN }}
-          CLIQ_THREAD_STORAGE_MODE: project
+          CLIQ_THREAD_STORAGE_MODE: ${{ vars.CLIQ_THREAD_STORAGE_MODE }}
           GITHUB_PROJECT_OWNER: ${{ github.repository_owner }}
           PROJECT_NUMBER: ${{ vars.PROJECT_NUMBER }}
           PROJECT_THREAD_FIELD_ID: ${{ vars.PROJECT_THREAD_FIELD_ID }}
@@ -456,9 +456,8 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
           # PROJECT_TOKEN is a protected environment secret, not a repo variable.
           PROJECT_TOKEN: ${{ secrets.PROJECT_TOKEN }}
-          # Previous mode (PR marker comment storage):
-          # CLIQ_THREAD_STORAGE_MODE: comment
-          CLIQ_THREAD_STORAGE_MODE: project
+          # Keep this unset unless the user wants PR thread reuse via GitHub Project V2.
+          CLIQ_THREAD_STORAGE_MODE: ${{ vars.CLIQ_THREAD_STORAGE_MODE }}
           # Auto mode: resolve project id by owner + number.
           GITHUB_PROJECT_OWNER: ${{ github.repository_owner }}
           PROJECT_NUMBER: ${{ vars.PROJECT_NUMBER }}
@@ -633,9 +632,8 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
           # PROJECT_TOKEN is a protected environment secret, not a repo variable.
           PROJECT_TOKEN: ${{ secrets.PROJECT_TOKEN }}
-          # Previous mode (PR marker comment storage):
-          # CLIQ_THREAD_STORAGE_MODE: comment
-          CLIQ_THREAD_STORAGE_MODE: project
+          # Keep this unset unless the user wants PR thread reuse via GitHub Project V2.
+          CLIQ_THREAD_STORAGE_MODE: ${{ vars.CLIQ_THREAD_STORAGE_MODE }}
           # Auto mode: resolve project id by owner + number.
           GITHUB_PROJECT_OWNER: ${{ github.repository_owner }}
           PROJECT_NUMBER: ${{ vars.PROJECT_NUMBER }}
