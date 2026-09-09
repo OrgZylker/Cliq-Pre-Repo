@@ -152,8 +152,9 @@ jobs:
       CLIQ_BOT_UNIQUE_NAME: ${{ vars.CLIQ_BOT_UNIQUE_NAME }}
 
       # USER CONFIG (repository variable): CLIQ_THREAD_STORAGE_MODE
-      # Optional. Default is "comment"; set to "project" only when you want
-      # PR updates to keep the same Cliq thread using a GitHub Project V2 field.
+      # Optional. Set to "project" only when you want PR updates to keep the
+      # same Cliq thread using a GitHub Project V2 field. If it is not enabled,
+      # the workflow posts normal channel messages and does not store a thread ID.
       CLIQ_THREAD_STORAGE_MODE: ${{ vars.CLIQ_THREAD_STORAGE_MODE }}
 
       # USER CONFIG (repository variable): PROJECT_THREAD_FIELD_ID
@@ -450,7 +451,7 @@ jobs:
           echo "PR inserted into project table successfully."
 
       - if: ${{ github.event_name != 'pull_request' && github.event_name != 'pull_request_target' }}
-        uses: Lincy-Zoho/GitHub-Informer-New@v6.3.4
+        uses: Lincy-Zoho/GitHub-Informer-New@v6.3.5
         env:
           # Use workflow token for repo/PR APIs; use PROJECT_TOKEN only for ProjectV2 operations.
           GITHUB_TOKEN: ${{ github.token }}
@@ -626,7 +627,7 @@ jobs:
           echo "token_present=${{ secrets.GITHUB_TOKEN != '' }}"
 
       - if: ${{ github.event_name == 'pull_request_target' }}
-        uses: Lincy-Zoho/GitHub-Informer-New@v6.3.4
+        uses: Lincy-Zoho/GitHub-Informer-New@v6.3.5
         env:
           # Use workflow token for repo/PR APIs; use PROJECT_TOKEN only for ProjectV2 operations.
           GITHUB_TOKEN: ${{ github.token }}
