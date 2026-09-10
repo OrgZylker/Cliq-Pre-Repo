@@ -513,7 +513,6 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
           AI_REVIEW_SERVICE: ${{ env.AI_REVIEW_SERVICE }}
           AI_REVIEW_MODEL: ${{ env.AI_REVIEW_MODEL }}
-          AI_REVIEW_ENABLED: ${{ env.AI_REVIEW_ENABLED }}
           # USER CONFIG (environment secret): AI_REVIEW_TOKEN
           # API key for the provider set in AI_REVIEW_SERVICE above. Required
           # only when AI_REVIEW_ENABLED is true. NOTE: the token's format/prefix
@@ -546,21 +545,16 @@ jobs:
               -d "{\"body\": $escaped_body}"
           }
 
-          enabled=$(printf '%s' "${AI_REVIEW_ENABLED:-}" | tr '[:upper:]' '[:lower:]' | xargs)
-          if [[ "$enabled" != "true" ]]; then
-            echo "AI review is disabled; skipping provider validation and PR comment checks."
-            exit 0
-          fi
-
           service=$(printf '%s' "$AI_REVIEW_SERVICE" | tr '[:upper:]' '[:lower:]' | xargs)
-          validation_errors=()
 
-          if [[ -z "$service" ]]; then
-            validation_errors+=("- `AI_REVIEW_SERVICE` is empty. Set it to one of: `openai`, `claude`, or `gemini`.")
-          fi
-
+          # 1. AI_REVIEW_TOKEN missing/empty -> comment on PR and fail.
           if [[ -z "$AI_REVIEW_TOKEN" ]]; then
-            validation_errors+=("- AI review is enabled, but `AI_REVIEW_TOKEN` is missing. Add the provider API key as the `AI_REVIEW_TOKEN` secret or disable AI review.")
+            post_pr_comment "### :warning: AI Review Gate — Action Required
+          AI review is **enabled** (\`AI_REVIEW_ENABLED: true\`) in \`CliqConnector.yml\`, but no \`AI_REVIEW_TOKEN\` secret has been configured.
+
+          **To fix:** add a repository/organization secret named \`AI_REVIEW_TOKEN\` containing a valid API key for the configured service (\`AI_REVIEW_SERVICE: $AI_REVIEW_SERVICE\`), or set \`AI_REVIEW_ENABLED: false\` in \`CliqConnector.yml\` if AI review is not needed."
+            echo "::error::AI_REVIEW_TOKEN secret is missing/empty while AI_REVIEW_ENABLED=true."
+            exit 1
           fi
 
           case "$service" in
@@ -573,40 +567,46 @@ jobs:
               default_model="claude-3-5-sonnet-latest"
               ;;
             gemini)
+              # api_url is finalized after model resolution below, since Gemini's
+              # native REST endpoint embeds the model name inside the URL path
+              # itself (.../models/<model>:generateContent) rather than as a
+              # body field like OpenAI/Claude. Setting a placeholder here keeps
+              # the case/esac structure symmetric with the other providers.
               default_model="gemini-2.5-flash"
               ;;
-            "")
-              api_url=""
-              default_model=""
-              ;;
             *)
-              validation_errors+=("- `AI_REVIEW_SERVICE: $AI_REVIEW_SERVICE` is not supported. Use one of: `openai`, `claude`, `gemini`.")
-              api_url=""
-              default_model=""
+              # 2. Invalid/unsupported AI_REVIEW_SERVICE -> comment on PR and fail.
+              post_pr_comment "### :warning: AI Review Gate — Action Required
+          \`AI_REVIEW_SERVICE: $AI_REVIEW_SERVICE\` in \`CliqConnector.yml\` is not a supported value.
+
+          **To fix:** set \`AI_REVIEW_SERVICE\` to one of: \`openai\`, \`claude\`, \`gemini\`."
+              echo "::error::Unsupported AI_REVIEW_SERVICE '$AI_REVIEW_SERVICE'. Use one of: openai, claude, gemini."
+              exit 1
               ;;
           esac
 
+          # NOTE: token-format validation against a fixed per-provider prefix (previously
+          # sk- / sk-ant- / AIza) has been intentionally removed. Google is transitioning
+          # Gemini/AI Studio keys away from the old "AIza..." API-key format toward newer
+          # "auth key" formats, so prefix matching is no longer a reliable, future-proof
+          # signal and would incorrectly reject valid Gemini keys going forward. The
+          # declared AI_REVIEW_SERVICE above is trusted as-is; if AI_REVIEW_TOKEN does not
+          # actually belong to that provider, the request will fail naturally at the
+          # provider's API (typically 401/403), which is surfaced later in the workflow.
+
+          # Empty AI_REVIEW_MODEL -> fall back to the provider's latest default model.
           model="${AI_REVIEW_MODEL:-$default_model}"
-          if [[ -z "$(printf '%s' "$AI_REVIEW_MODEL" | xargs)" && -n "$default_model" ]]; then
+          if [[ -z "$(printf '%s' "$AI_REVIEW_MODEL" | xargs)" ]]; then
             model="$default_model"
-            validation_errors+=("- `AI_REVIEW_MODEL` is empty, so the default provider model will be used: `$default_model`.")
           fi
 
-          if [[ "$service" == "gemini" && -n "$model" ]]; then
+          # Gemini's api_url must be built dynamically from the resolved model
+          # (user-supplied AI_REVIEW_MODEL if set, otherwise default_model above),
+          # since the model name is part of the URL path for this provider.
+          if [[ "$service" == "gemini" ]]; then
             api_url="https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent"
           fi
 
-          if [[ ${#validation_errors[@]} -gt 0 ]]; then
-            echo "::error::AI review configuration errors detected."
-            printf '%s\n' "${validation_errors[@]}"
-
-            combined_message=$(printf '%s\n' "### :warning: AI Review Gate — Configuration Issues\n\nThe AI review gate could not start because one or more validation checks failed:\n\n$(printf '%s\n' "${validation_errors[@]}")\n\n**Next steps:** fix the values in the repo/org variables and environment secrets, or set `AI_REVIEW_ENABLED=false` if AI review is intentionally disabled." )
-            post_pr_comment "$combined_message"
-            echo "ai_review_validation_commented=true" >> "$GITHUB_OUTPUT"
-            exit 1
-          fi
-
-          echo "ai_review_validation_commented=false" >> "$GITHUB_OUTPUT"
           echo "api-url=$api_url" >> "$GITHUB_OUTPUT"
           echo "model=$model" >> "$GITHUB_OUTPUT"
 
@@ -627,7 +627,7 @@ jobs:
           echo "token_present=${{ secrets.GITHUB_TOKEN != '' }}"
 
       - if: ${{ github.event_name == 'pull_request_target' }}
-        uses: Lincy-Zoho/GitHub-Informer-New@v6.4.2
+        uses: Lincy-Zoho/GitHub-Informer-New@v6.4.2 
         env:
           # Use workflow token for repo/PR APIs; use PROJECT_TOKEN only for ProjectV2 operations.
           GITHUB_TOKEN: ${{ github.token }}
@@ -666,7 +666,7 @@ jobs:
           # This should be read by the action from the event environment.
 
       - name: Ensure AI Review Gate check is reported
-        if: ${{ github.event_name == 'pull_request_target' && env.AI_REVIEW_ENABLED == 'true' }}
+        if: ${{ github.event_name == 'pull_request_target' }}
         shell: bash
         env:
           GITHUB_TOKEN: ${{ github.token }}
@@ -675,7 +675,6 @@ jobs:
           CHECK_NAME: AI Review Gate
           PR_ACTION: ${{ github.event.action }}
           AI_REVIEW_ON_SYNC: true
-          AI_REVIEW_ENABLED: ${{ env.AI_REVIEW_ENABLED }}
         run: |
           expected=false
           if [[ "$PR_ACTION" == "opened" || "$PR_ACTION" == "reopened" ]]; then
@@ -737,98 +736,3 @@ jobs:
             -d "$payload")
 
           echo "Safeguard AI Review Gate response: $create_body"
-
-      - name: Post configuration validation summary to PR
-        if: ${{ failure() && github.event_name == 'pull_request_target' && github.event.pull_request.number != '' && env.AI_REVIEW_ENABLED == 'true' && steps.resolve-ai-review-provider.outputs.ai_review_validation_commented != 'true' }}
-        shell: bash
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-          REPO: ${{ github.repository }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-          ENDPOINT: ${{ secrets.ENDPOINT }}
-          CLIQ_NOTIFICATION_MODE: ${{ env.CLIQ_NOTIFICATION_MODE }}
-          CLIQ_BOT_UNIQUE_NAME: ${{ env.CLIQ_BOT_UNIQUE_NAME }}
-          CLIQ_THREAD_STORAGE_MODE: ${{ env.CLIQ_THREAD_STORAGE_MODE }}
-          PROJECT_TOKEN: ${{ secrets.PROJECT_TOKEN }}
-          PROJECT_NUMBER: ${{ env.PROJECT_NUMBER }}
-          PROJECT_THREAD_FIELD_ID: ${{ env.PROJECT_THREAD_FIELD_ID }}
-          AI_REVIEW_ENABLED: ${{ env.AI_REVIEW_ENABLED }}
-          AI_REVIEW_SERVICE: ${{ env.AI_REVIEW_SERVICE }}
-          AI_REVIEW_MODEL: ${{ env.AI_REVIEW_MODEL }}
-          AI_REVIEW_TOKEN: ${{ secrets.AI_REVIEW_TOKEN }}
-        run: |
-          post_pr_comment() {
-            local body="$1"
-            local escaped_body
-            escaped_body=$(printf '%s' "$body" | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))' 2>/dev/null)
-            if [[ -z "$escaped_body" ]]; then
-              escaped_body=$(printf '%s' "$body" | sed 's/\\/\\\\/g; s/"/\\"/g' | awk 'BEGIN{ORS="\\n"} {print}')
-              escaped_body="\"$escaped_body\""
-            fi
-
-            curl -sS -o /dev/null \
-              -X POST "https://api.github.com/repos/$REPO/issues/$PR_NUMBER/comments" \
-              -H "Accept: application/vnd.github+json" \
-              -H "Authorization: Bearer $GITHUB_TOKEN" \
-              -H "Content-Type: application/json" \
-              -d "{\"body\": $escaped_body}"
-          }
-
-          validation_errors=()
-          mode=$(printf '%s' "${CLIQ_NOTIFICATION_MODE:-}" | tr '[:upper:]' '[:lower:]' | xargs)
-          if [[ -z "${ENDPOINT:-}" ]]; then
-            validation_errors+=("- `ENDPOINT` is missing. Add the full Cliq channel URL with the `?zapikey=` value as an environment secret.")
-          fi
-
-          if [[ "$mode" == "bot" && -z "${CLIQ_BOT_UNIQUE_NAME:-}" ]]; then
-            validation_errors+=("- `CLIQ_NOTIFICATION_MODE=bot` was selected, but `CLIQ_BOT_UNIQUE_NAME` is empty.")
-          fi
-
-          thread_mode=$(printf '%s' "${CLIQ_THREAD_STORAGE_MODE:-}" | tr '[:upper:]' '[:lower:]' | xargs)
-          if [[ "$thread_mode" == "project" ]]; then
-            if [[ -z "${PROJECT_TOKEN:-}" ]]; then
-              validation_errors+=("- `CLIQ_THREAD_STORAGE_MODE=project` requires `PROJECT_TOKEN` as a protected environment secret.")
-            fi
-            if [[ -z "${PROJECT_NUMBER:-}" ]]; then
-              validation_errors+=("- `CLIQ_THREAD_STORAGE_MODE=project` requires `PROJECT_NUMBER` to be set as a repository variable.")
-            fi
-            if [[ -z "${PROJECT_THREAD_FIELD_ID:-}" ]]; then
-              validation_errors+=("- `CLIQ_THREAD_STORAGE_MODE=project` requires `PROJECT_THREAD_FIELD_ID` to be set as a repository variable.")
-            fi
-          fi
-
-          review_enabled=$(printf '%s' "${AI_REVIEW_ENABLED:-}" | tr '[:upper:]' '[:lower:]' | xargs)
-          if [[ "$review_enabled" == "true" ]]; then
-            if [[ -z "${AI_REVIEW_SERVICE:-}" ]]; then
-              validation_errors+=("- `AI_REVIEW_ENABLED=true`, but `AI_REVIEW_SERVICE` is empty. Use `openai`, `claude`, or `gemini`.")
-            fi
-            if [[ -z "${AI_REVIEW_MODEL:-}" ]]; then
-              validation_errors+=("- `AI_REVIEW_ENABLED=true`, but `AI_REVIEW_MODEL` is empty.")
-            fi
-            if [[ -z "${AI_REVIEW_TOKEN:-}" ]]; then
-              validation_errors+=("- `AI_REVIEW_ENABLED=true`, but `AI_REVIEW_TOKEN` is missing from the protected environment secrets.")
-            fi
-            case "${AI_REVIEW_SERVICE:-}" in
-              openai|claude|gemini) ;;
-              *) validation_errors+=("- `AI_REVIEW_SERVICE=${AI_REVIEW_SERVICE:-}` is not supported. Use `openai`, `claude`, or `gemini`.") ;;
-            esac
-          fi
-
-          if [[ ${#validation_errors[@]} -eq 0 ]]; then
-            echo "No validation issues detected; skipping PR summary comment."
-            exit 0
-          fi
-
-          joined="$(printf '%s\n' "${validation_errors[@]}")"
-          body=$(cat <<EOF
-### :warning: Configuration Validation Failed
-
-The workflow detected one or more configuration problems before or during validation:
-
-$joined
-
-Please fix the repository variables or environment secrets, then rerun the workflow.
-EOF
-          )
-
-          post_pr_comment "$body"
