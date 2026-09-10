@@ -83,10 +83,11 @@ on:
     # No Types
   public:
     # No Types
-  # pull_request disabled to avoid duplicate PR created/closed notifications.
-  # PR handling is done only through pull_request_target below.
-  # pull_request:
-  #   types: [ opened , reopened , synchronize , closed ]
+  # Standard PR flow is enabled so PR opened/reopened/sync/closed events trigger
+  # the workflow again. Keep pull_request_target enabled as well for secure
+  # target-branch automation when required by the repository.
+  pull_request:
+    types: [ opened , reopened , synchronize , closed ]
   pull_request_target:
     # It works only for opened , synchronize and reopened if not specified
     types: [ assigned , unassigned , labeled , unlabeled , opened , closed , edited , reopened , synchronize , converted_to_draft , ready_for_review , locked , unlocked , review_requested , review_request_removed , auto_merge_enabled , auto_merge_disabled ]
