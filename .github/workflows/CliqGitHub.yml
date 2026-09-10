@@ -505,7 +505,7 @@ jobs:
 
       - name: Resolve AI review provider endpoint
         id: resolve-ai-review-provider
-        if: ${{ github.event_name == 'pull_request_target' }}
+        if: ${{ github.event_name == 'pull_request_target' && env.AI_REVIEW_ENABLED == 'true' }}
         shell: bash
         env:
           GITHUB_TOKEN: ${{ github.token }}
@@ -602,11 +602,11 @@ jobs:
 
             combined_message=$(printf '%s\n' "### :warning: AI Review Gate — Configuration Issues\n\nThe AI review gate could not start because one or more validation checks failed:\n\n$(printf '%s\n' "${validation_errors[@]}")\n\n**Next steps:** fix the values in the repo/org variables and environment secrets, or set `AI_REVIEW_ENABLED=false` if AI review is intentionally disabled." )
             post_pr_comment "$combined_message"
-            echo "commented=true" >> "$GITHUB_OUTPUT"
+            echo "ai_review_validation_commented=true" >> "$GITHUB_OUTPUT"
             exit 1
           fi
 
-          echo "commented=false" >> "$GITHUB_OUTPUT"
+          echo "ai_review_validation_commented=false" >> "$GITHUB_OUTPUT"
           echo "api-url=$api_url" >> "$GITHUB_OUTPUT"
           echo "model=$model" >> "$GITHUB_OUTPUT"
 
@@ -739,22 +739,22 @@ jobs:
           echo "Safeguard AI Review Gate response: $create_body"
 
       - name: Post configuration validation summary to PR
-        if: ${{ always() && github.event_name == 'pull_request_target' && github.event.pull_request.number != '' && steps.resolve-ai-review-provider.outputs.commented != 'true' }}
+        if: ${{ failure() && github.event_name == 'pull_request_target' && github.event.pull_request.number != '' && env.AI_REVIEW_ENABLED == 'true' && steps.resolve-ai-review-provider.outputs.ai_review_validation_commented != 'true' }}
         shell: bash
         env:
           GITHUB_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           ENDPOINT: ${{ secrets.ENDPOINT }}
-          CLIQ_NOTIFICATION_MODE: ${{ vars.CLIQ_NOTIFICATION_MODE }}
-          CLIQ_BOT_UNIQUE_NAME: ${{ vars.CLIQ_BOT_UNIQUE_NAME }}
-          CLIQ_THREAD_STORAGE_MODE: ${{ vars.CLIQ_THREAD_STORAGE_MODE }}
+          CLIQ_NOTIFICATION_MODE: ${{ env.CLIQ_NOTIFICATION_MODE }}
+          CLIQ_BOT_UNIQUE_NAME: ${{ env.CLIQ_BOT_UNIQUE_NAME }}
+          CLIQ_THREAD_STORAGE_MODE: ${{ env.CLIQ_THREAD_STORAGE_MODE }}
           PROJECT_TOKEN: ${{ secrets.PROJECT_TOKEN }}
-          PROJECT_NUMBER: ${{ vars.PROJECT_NUMBER }}
-          PROJECT_THREAD_FIELD_ID: ${{ vars.PROJECT_THREAD_FIELD_ID }}
-          AI_REVIEW_ENABLED: ${{ vars.AI_REVIEW_ENABLED }}
-          AI_REVIEW_SERVICE: ${{ vars.AI_REVIEW_SERVICE }}
-          AI_REVIEW_MODEL: ${{ vars.AI_REVIEW_MODEL }}
+          PROJECT_NUMBER: ${{ env.PROJECT_NUMBER }}
+          PROJECT_THREAD_FIELD_ID: ${{ env.PROJECT_THREAD_FIELD_ID }}
+          AI_REVIEW_ENABLED: ${{ env.AI_REVIEW_ENABLED }}
+          AI_REVIEW_SERVICE: ${{ env.AI_REVIEW_SERVICE }}
+          AI_REVIEW_MODEL: ${{ env.AI_REVIEW_MODEL }}
           AI_REVIEW_TOKEN: ${{ secrets.AI_REVIEW_TOKEN }}
         run: |
           post_pr_comment() {
